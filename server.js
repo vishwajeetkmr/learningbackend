@@ -1,3 +1,4 @@
+require('dotenv').config()
 const jwt = require("jsonwebtoken")
 const bcrypt = require("bcrypt")
 const express = require('express')
@@ -69,11 +70,15 @@ req.body.password = bcrypt.hashSync(req.body.password, salt)
 
 const ourStatement = db.prepare("INSERT INTO users (username, password) VALUES (?, ?)")
 
-ourStatement.run(req.body.username, req.body.password)
+const result = ourStatement.run(req.body.username, req.body.password)
+
+const lookupStatement = db.prepare("SELECT * FROM users WHERE ROWID = ?")
+const ourUser = lookupStatement.get(result.lastInsertRowid)
 
 // log the user by giving them a cookie
+const ourTokenValue = jwt.sign({exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,  skyColor: "blue" , userid: ourUser.id, username: ourUser.username}, process.env.JWTSECRET)
 
-res.cookie("ourSimpleApp", "supertopsecretvalue", {
+res.cookie("ourSimpleApp", ourTokenValue, {
     httpOnly: true,
     secure: true,
     sameSite: "strict",
